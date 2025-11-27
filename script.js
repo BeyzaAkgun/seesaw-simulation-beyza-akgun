@@ -3,6 +3,11 @@ let objects = [];
 const clickArea = document.querySelector(".click-area");
 const plank = document.querySelector(".plank");
 
+// ADIM 5: Sayfa yüklendiğinde kayıtlı verileri yükle
+window.addEventListener('load', function() {
+    loadFromLocalStorage();
+});
+
 
 clickArea.addEventListener("click", (event) => {
 
@@ -45,6 +50,8 @@ clickArea.addEventListener("click", (event) => {
     };
 
     objects.push(newObject);
+
+    saveToLocalStorage();
     
     calculateTorque();
 
@@ -98,4 +105,62 @@ function calculateTorque() {
 function rotatePlank(angle) {
     const plank = document.querySelector(".plank");
     plank.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+}
+
+// Function to save the current state to Local Storage
+function saveToLocalStorage() {
+    const saveData = objects.map(obj => ({
+        weight: obj.weight,
+        distance: obj.distance
+    }));
+    localStorage.setItem('seesawState', JSON.stringify(saveData));
+    console.log("Saved to Local Storage:", saveData.length + " objects");
+}
+
+// ADIM 5: Local Storage'dan yükleme fonksiyonu
+function loadFromLocalStorage() {
+    const saved = localStorage.getItem('seesawState');
+    if (saved) {
+        try {
+            const savedObjects = JSON.parse(saved);
+            console.log("Loading from Local Storage:", savedObjects.length + " objects");
+            
+            // Kayıtlı objeleri yeniden oluştur
+            savedObjects.forEach(objData => {
+                createObjectFromSavedData(objData);
+            });
+            
+            // Tork hesapla (yeniden oluşturulan objelerle)
+            if (objects.length > 0) {
+                calculateTorque();
+            }
+            
+        } catch (error) {
+            console.error("Local Storage loading error:", error);
+            localStorage.removeItem('seesawState');
+        }
+    }
+}
+
+// ADIM 5: Kayıtlı veriden obje oluşturma
+function createObjectFromSavedData(objData) {
+    const object = document.createElement("div");
+    object.classList.add("object");
+    object.innerText = objData.weight + "kg";
+
+    const size = 30 + objData.weight * 2;
+    object.style.width = size + "px";
+    object.style.height = size + "px";
+    object.style.backgroundColor = "#FF6B6B";
+
+    plank.appendChild(object);
+    object.style.position = 'absolute';
+    object.style.left = (objData.distance + 200 - size / 2) + 'px';
+    object.style.top = (-size / 2) + 'px';
+
+    objects.push({
+        element: object,
+        weight: objData.weight,
+        distance: objData.distance
+    });
 }
