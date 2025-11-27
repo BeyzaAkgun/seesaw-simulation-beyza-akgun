@@ -53,7 +53,7 @@ clickArea.addEventListener("click", (event) => {
 
 });
 
-// Function to calculate torque and weights on both sides
+// Function to calculate torque and rotate the plank
 function calculateTorque() {
     let leftTorque = 0;
     let rightTorque = 0;
@@ -62,11 +62,9 @@ function calculateTorque() {
     
     objects.forEach(obj => {
         if (obj.distance < 0) {
-            // Left side
             leftTorque += obj.weight * Math.abs(obj.distance);
             leftWeight += obj.weight;
         } else if (obj.distance > 0) {
-            //Right side
             rightTorque += obj.weight * obj.distance;
             rightWeight += obj.weight;
         }
@@ -74,10 +72,30 @@ function calculateTorque() {
     
     const netTorque = rightTorque - leftTorque;
     
-    console.log(" TORQUE CALCULATION RESULTS ");
+    // Rotation angle calculation
+    let angle = 0;
+    if (netTorque !== 0) {
+        // -30 to +30 degrees based on torque
+        const maxPossibleTorque = 10 * 200; // 2000
+        angle = (netTorque / maxPossibleTorque) * 30;
+        angle = Math.max(-30, Math.min(30, angle));
+    }
+    
+    //Apply rotation to plank
+    rotatePlank(angle);
+    
+    console.log("=== TORQUE CALCULATION ===");
     console.log("Left Side - Weight:", leftWeight + "kg", "Torque:", leftTorque);
     console.log("Right Side - Weight:", rightWeight + "kg", "Torque:", rightTorque);
     console.log("Net Torque:", netTorque);
+    console.log("Calculated Angle:", angle + "°");
     console.log("Total Object Count:", objects.length);
-    return { netTorque, leftWeight, rightWeight };
+    
+    return { netTorque, leftWeight, rightWeight, angle };
+}
+
+// Rotate the plank based on the calculated angle
+function rotatePlank(angle) {
+    const plank = document.querySelector(".plank");
+    plank.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
 }

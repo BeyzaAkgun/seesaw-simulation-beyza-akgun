@@ -77,6 +77,7 @@ body {
   border: 1.5px solid #4a3f2f;
   transform-origin: center;
   transform: translate(-50%, -50%) rotate(0deg);
+  transition: transform 0.5s ease;
   z-index: 10;
   pointer-events: none;
 }
@@ -92,4 +93,18 @@ body {
   cursor: pointer;
   z-index: 20;
   background-color: transparent;
+}
+
+.object {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    z-index: 15;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
 }
