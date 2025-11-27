@@ -1,4 +1,3 @@
-
 let objects = [];
 let historyEntries = []; // Array to store history entries
 
@@ -28,6 +27,11 @@ const colorPalette = [
 
 // Load saved state on page load
 window.addEventListener('load', function() {
+    const seesawWrapper = document.getElementById('seesawWrapper');
+    const scale = createScale();
+    seesawWrapper.appendChild(scale);
+
+
     loadFromLocalStorage();
     loadHistoryFromStorage();
     updateNextWeightDisplay();
@@ -72,7 +76,6 @@ function loadHistoryFromStorage() {
     if (savedHistory) {
         try {
             historyEntries = JSON.parse(savedHistory);
-            // Load history entries (newest to oldest)
             historyEntries.forEach(entry => {
                 const log = document.getElementById('history');
                 const historyEntry = document.createElement('div');
@@ -87,66 +90,47 @@ function loadHistoryFromStorage() {
         }
     }
 }
-
-clickArea.addEventListener("click", (event) => {
-
-    if (!clickArea || !plank){
+    //Click event listener
+    clickArea.addEventListener("click", async (event) => {
+      if (!clickArea || !plank) {
         console.error("Required elements not found");
         return;
-    }
+      }
+      // Getting the X position of the click and keep it within -200 to +200 from the center
+      const offsetX = event.offsetX;
+      const normalizedX = (offsetX / 500) * 400 - 200;
 
-    // Getting the X position of the click and keep it within -200 to +200 from the center
-    const offsetX = event.offsetX;
-    const normalizedX = Math.max(-200, Math.min(200, offsetX - 250));
+      console.log("Clicked X:", offsetX);
+      console.log("Normalized X:", normalizedX);
 
-    console.log("Clicked X:", offsetX);
-    console.log("Normalized X:", normalizedX);
+      const weight = nextWeight;
+      const color = getRandomColor();
 
-    // Random weight between 1 and 10 kg
-    const weight = nextWeight;
+      // Create animated object
+      const object = await createAnimatedObject(weight, normalizedX, color);
 
-    //Creating the object
-    const object = document.createElement("div");
-    object.classList.add("object");
-    object.innerText = weight + "kg";
-
-    const size = 30 + weight * 2; // heavier objects are bigger
-    object.style.width = size + "px";
-    object.style.height = size + "px";
-    const color = getRandomColor();
-    object.style.backgroundColor = color; 
-
-    // Putting the object on the plank at the right position
-    plank.appendChild(object);
-    object.style.position = 'absolute';
-    object.style.left = (normalizedX + 200 - size / 2) + 'px';
-    object.style.top = (-size / 2) + 'px';
-
-    //Storing the object data
-    const newObject = {
+      // Storing the object data
+      const newObject = {
         element: object,
         weight: weight,
         distance: normalizedX,
         color: color
-    };
+      };
 
-    objects.push(newObject);
+      objects.push(newObject);
+      saveToLocalStorage();
 
-    saveToLocalStorage();
+      const side = normalizedX < 0 ? "left" : "right";
+      const distanceFromCenter = Math.abs(normalizedX);
+      addHistoryEntry(`📦 ${weight}kg dropped on ${side} side at ${distanceFromCenter}px from center`);
 
-    const side = normalizedX < 0 ? "left" : "right";
-    const distanceFromCenter = Math.abs(normalizedX);
-    addHistoryEntry(`📦 ${weight}kg dropped on ${side} side at ${distanceFromCenter}px from center`);
+      nextWeight = generateNextWeight();
+      updateNextWeightDisplay();
+      
+      calculateTorque();
 
-    nextWeight = generateNextWeight();
-    updateNextWeightDisplay();
-    
-    calculateTorque();
-
-    console.log(`Object created: ${weight}kg at ${normalizedX}px from center`);
-
-
-});
+      console.log(`Object created: ${weight}kg at ${normalizedX}px from center`);
+    });
 
 // Function to calculate torque and rotate the plank
 function calculateTorque() {
@@ -198,10 +182,50 @@ function updateUI(leftWeight, rightWeight, angle) {
     document.getElementById('tiltAngle').textContent = angle.toFixed(1) + '°';
 }
 
-// Rotate the plank based on the calculated angle
+// Rotate the plank based on the calculated angle 
 function rotatePlank(angle) {
     const plank = document.querySelector(".plank");
+    
+    // Get current angle
+    const currentTransform = plank.style.transform;
+    const currentAngle = currentTransform.includes('rotate') ? parseFloat(currentTransform.match(/rotate\(([^)]+)deg\)/)[1]) : 0;
+    
+    // Bounce animation
+    plank.style.setProperty('--initial-angle', currentAngle + 'deg');
+    plank.style.setProperty('--final-angle', angle + 'deg');
+    
+    // Smooth rotation
     plank.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+}
+
+
+function createAnimatedObject(weight, normalizedX, color) {
+    return new Promise((resolve) => {
+        const object = document.createElement("div");
+        object.classList.add("object");
+        object.innerText = weight + "kg";
+
+        const size = 30 + weight * 2;
+        object.style.width = size + "px";
+        object.style.height = size + "px";
+        object.style.backgroundColor = color;
+
+        // Starting position
+        object.style.left = (normalizedX + 200 - size/2) + 'px';
+        object.style.top = '-100px'; // start from the top
+        
+        plank.appendChild(object);
+
+        //When the animation is finished, place it in the real position
+        setTimeout(() => {
+            object.style.top = (-size/2) + 'px';
+            
+            // resolve when animation done
+            setTimeout(() => {
+                resolve(object);
+            }, 600);
+        }, 50);
+    });
 }
 
 // Function to save the current state to Local Storage
@@ -269,13 +293,23 @@ document.getElementById('btnReset').addEventListener('click', function() {
     resetSeesaw();
 });
 
+
 // Start over - clear everything and balance the seesaw
 function resetSeesaw() {
-     // Removing all the objects 
-    objects.forEach(obj => {
-        if (obj.element && obj.element.parentNode) {
-            obj.element.parentNode.removeChild(obj.element);
-        }
+    // Removing all the objects 
+    objects.forEach((obj, index) => {
+        setTimeout(() => {
+            if (obj.element && obj.element.parentNode) {
+                // Fade out animation
+                obj.element.style.transition = 'all 0.3s ease';
+                obj.element.style.transform = 'scale(0)';
+                obj.element.style.opacity = '0';
+                
+                setTimeout(() => {
+                    obj.element.parentNode.removeChild(obj.element);
+                }, 300);
+            }
+        }, index * 50); 
     });
     
     objects = [];
@@ -283,10 +317,14 @@ function resetSeesaw() {
     updateNextWeightDisplay();
     localStorage.removeItem('seesawState');
     localStorage.removeItem('seesawHistory');
-    rotatePlank(0);
+    
+    // Smooth reset rotation
+    const plank = document.querySelector(".plank");
+    plank.style.transition = 'transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    plank.style.transform = `translate(-50%, -50%) rotate(0deg)`;
+    
     updateUI(0, 0, 0);
     clearHistoryPanel();
-
     historyEntries = [];
 
     console.log("Seesaw reset");
@@ -296,4 +334,48 @@ function resetSeesaw() {
 function clearHistoryPanel() {
     const log = document.getElementById('history');
     log.innerHTML = '';
+}
+
+// Function to create the scale/ruler
+function createScale() {
+  const scale = document.createElement('div');
+  scale.className = 'scale';
+  
+  // Main scale line
+  const scaleLine = document.createElement('div');
+  scaleLine.className = 'scale-line';
+  scale.appendChild(scaleLine);
+  
+  // Create ticks and labels
+  const positions = [-200, -150, -100, -50, 0, 50, 100, 150, 200];
+  
+  positions.forEach(pos => {
+    // Tick mark
+    const tick = document.createElement('div');
+    tick.className = 'scale-tick';
+    
+    if (pos === 0) {
+      tick.classList.add('center');
+    } else if (Math.abs(pos) % 100 === 0) {
+      tick.classList.add('major');
+    }
+    
+    tick.style.left = `${pos + 200}px`; // Converting to pixel position (0-400 range)
+    scale.appendChild(tick);
+    
+    // Label
+    const label = document.createElement('div');
+    label.className = 'scale-label';
+    if (pos === 0) {
+      label.classList.add('center');
+      label.textContent = '0';
+    } else {
+      label.textContent = Math.abs(pos);
+    }
+    
+    label.style.left = `${pos + 200}px`;
+    scale.appendChild(label);
+  });
+  
+  return scale;
 }
