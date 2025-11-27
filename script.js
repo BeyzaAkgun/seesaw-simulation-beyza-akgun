@@ -3,11 +3,58 @@ let objects = [];
 const clickArea = document.querySelector(".click-area");
 const plank = document.querySelector(".plank");
 
-// ADIM 5: Sayfa yüklendiğinde kayıtlı verileri yükle
+let nextWeight = generateNextWeight(); //Weight for the next object
+
+const colorPalette = [
+    '#FF0000',
+    '#0000FF', 
+    '#FFA500', 
+    '#008000', 
+    '#800080', 
+    '#FFFF00', 
+    '#00FFFF', 
+    '#FF00FF', 
+    '#000000', 
+    '#ffc0cb',
+    '#FF4500', 
+    '#000080', 
+    '#006400', 
+    '#8B0000', 
+    '#2F4F4F'  
+];
+
+// Load saved state on page load
 window.addEventListener('load', function() {
     loadFromLocalStorage();
+    updateNextWeightDisplay();
+    updateUI(0, 0, 0);
 });
 
+// Function to get a random color from the palette
+function getRandomColor() {
+    return colorPalette[Math.floor(Math.random() * colorPalette.length)];
+}
+
+//Randomly decide the weight between 1-10
+function generateNextWeight() {
+    return Math.floor(Math.random() * 10) + 1;
+}
+
+// Showing the upcoming weight
+function updateNextWeightDisplay() {
+    document.getElementById('nextWeight').textContent = nextWeight + ' kg';
+}
+
+// Function to add entry to history logs
+function addHistoryEntry(message) {
+    const log = document.getElementById('history');
+    const entry = document.createElement('div');
+    entry.classList.add('history-entry');
+    entry.textContent = message;
+    
+    log.insertBefore(entry, log.firstChild);
+    console.log("History:", message);
+}
 
 clickArea.addEventListener("click", (event) => {
 
@@ -24,7 +71,7 @@ clickArea.addEventListener("click", (event) => {
     console.log("Normalized X:", normalizedX);
 
     // Random weight between 1 and 10 kg
-    const weight = Math.floor(Math.random() * 10) + 1;
+    const weight = nextWeight;
 
     //Creating the object
     const object = document.createElement("div");
@@ -34,7 +81,8 @@ clickArea.addEventListener("click", (event) => {
     const size = 30 + weight * 2; // heavier objects are bigger
     object.style.width = size + "px";
     object.style.height = size + "px";
-    object.style.backgroundColor = "#FF6B6B"; 
+    const color = getRandomColor();
+    object.style.backgroundColor = color; 
 
     // Putting the object on the plank at the right position
     plank.appendChild(object);
@@ -46,12 +94,20 @@ clickArea.addEventListener("click", (event) => {
     const newObject = {
         element: object,
         weight: weight,
-        distance: normalizedX
+        distance: normalizedX,
+        color: color
     };
 
     objects.push(newObject);
 
     saveToLocalStorage();
+
+    const side = normalizedX < 0 ? "left" : "right";
+    const distanceFromCenter = Math.abs(normalizedX);
+    addHistoryEntry(`📦 ${weight}kg dropped on ${side} side at ${distanceFromCenter}px from center`);
+
+    nextWeight = generateNextWeight();
+    updateNextWeightDisplay();
     
     calculateTorque();
 
@@ -90,6 +146,8 @@ function calculateTorque() {
     
     //Apply rotation to plank
     rotatePlank(angle);
+
+    updateUI(leftWeight, rightWeight, angle);
     
     console.log("=== TORQUE CALCULATION ===");
     console.log("Left Side - Weight:", leftWeight + "kg", "Torque:", leftTorque);
@@ -99,6 +157,13 @@ function calculateTorque() {
     console.log("Total Object Count:", objects.length);
     
     return { netTorque, leftWeight, rightWeight, angle };
+}
+
+// UI updating
+function updateUI(leftWeight, rightWeight, angle) {
+    document.getElementById('leftWeight').textContent = leftWeight.toFixed(1) + ' kg';
+    document.getElementById('rightWeight').textContent = rightWeight.toFixed(1) + ' kg';
+    document.getElementById('tiltAngle').textContent = angle.toFixed(1) + '°';
 }
 
 // Rotate the plank based on the calculated angle
@@ -111,13 +176,14 @@ function rotatePlank(angle) {
 function saveToLocalStorage() {
     const saveData = objects.map(obj => ({
         weight: obj.weight,
-        distance: obj.distance
+        distance: obj.distance,
+        color:obj.color
     }));
     localStorage.setItem('seesawState', JSON.stringify(saveData));
     console.log("Saved to Local Storage:", saveData.length + " objects");
 }
 
-// ADIM 5: Local Storage'dan yükleme fonksiyonu
+// Function to load the state from Local Storage
 function loadFromLocalStorage() {
     const saved = localStorage.getItem('seesawState');
     if (saved) {
@@ -125,12 +191,12 @@ function loadFromLocalStorage() {
             const savedObjects = JSON.parse(saved);
             console.log("Loading from Local Storage:", savedObjects.length + " objects");
             
-            // Kayıtlı objeleri yeniden oluştur
+            // Recreate each saved object
             savedObjects.forEach(objData => {
                 createObjectFromSavedData(objData);
             });
             
-            // Tork hesapla (yeniden oluşturulan objelerle)
+            // Recalculate torque after loading
             if (objects.length > 0) {
                 calculateTorque();
             }
@@ -142,7 +208,7 @@ function loadFromLocalStorage() {
     }
 }
 
-// ADIM 5: Kayıtlı veriden obje oluşturma
+// Function to create object from saved data
 function createObjectFromSavedData(objData) {
     const object = document.createElement("div");
     object.classList.add("object");
@@ -151,7 +217,8 @@ function createObjectFromSavedData(objData) {
     const size = 30 + objData.weight * 2;
     object.style.width = size + "px";
     object.style.height = size + "px";
-    object.style.backgroundColor = "#FF6B6B";
+    const color = objData.color || getRandomColor();
+    object.style.backgroundColor = color;
 
     plank.appendChild(object);
     object.style.position = 'absolute';
@@ -161,6 +228,36 @@ function createObjectFromSavedData(objData) {
     objects.push({
         element: object,
         weight: objData.weight,
-        distance: objData.distance
+        distance: objData.distance,
+        color: color
     });
+}
+// Reset button setup - calls resetSeesaw when clicked
+document.getElementById('btnReset').addEventListener('click', function() {
+    resetSeesaw();
+});
+
+// Start over - clear everything and balance the seesaw
+function resetSeesaw() {
+     // Removing all the objects 
+    objects.forEach(obj => {
+        if (obj.element && obj.element.parentNode) {
+            obj.element.parentNode.removeChild(obj.element);
+        }
+    });
+    
+    objects = [];
+    nextWeight = generateNextWeight();
+    updateNextWeightDisplay();
+    localStorage.removeItem('seesawState');
+    rotatePlank(0);
+    updateUI(0, 0, 0);
+    clearHistoryPanel();
+    console.log("Seesaw reset");
+}
+
+// Clear all entries from the history panel
+function clearHistoryPanel() {
+    const log = document.getElementById('history');
+    log.innerHTML = '';
 }

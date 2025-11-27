@@ -7,13 +7,38 @@
 </head>
 <body>
   <div class="container">
+    <div class="data-panel">
+      <div class="data-item">
+        <div class="data-label">LEFT WEIGHT</div>
+        <div class="data-value" id="leftWeight">0.0 kg</div>
+      </div>
+       <div class="data-item">
+        <div class="data-label">NEXT WEIGHT</div>
+        <div class="data-value" id="nextWeight">? kg</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">RIGHT WEIGHT</div>
+        <div class="data-value" id="rightWeight">0.0 kg</div>
+      </div>
+      <div class="data-item">
+        <div class="data-label">TILT ANGLE</div>
+        <div class="data-value" id="tiltAngle">0.0°</div>
+      </div>
+    </div>
+
     <div class="seesaw-wrapper" id="seesawWrapper">
       <div class="ground"></div>
       <div class="pivot"></div>
       <div class="plank" id="plank"></div>
       <div class="click-area" id="clickArea"></div>
     </div>
+
+    <div class="actions">
+      <button id="btnReset">🔄 Reset Seesaw</button>
+    </div>
+    <div class="history" id="history"></div>
   </div>
+
 
   <script src="script.js"></script>
 </body>
