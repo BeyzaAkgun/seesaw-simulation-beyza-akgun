@@ -6,6 +6,9 @@ A pure JavaScript physics simulation of a playground seesaw where users can drop
 
 This project implements an interactive seesaw simulation with realistic physics. Users can click anywhere on the seesaw plank to drop objects with random weights (1-10kg), and the seesaw responds by tilting based on torque calculations.
 
+## Live Demo
+[View Live Simulation](https://beyzaakgun.github.io/seesaw-simulation-beyza-akgun/)
+
 ## Features
 
 - **Real Physics Simulation**: Calculates torque using weight × distance from pivot
