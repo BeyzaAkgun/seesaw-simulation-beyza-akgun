@@ -1,4 +1,7 @@
+
 let objects = [];
+let historyEntries = []; // Array to store history entries
+
 
 const clickArea = document.querySelector(".click-area");
 const plank = document.querySelector(".plank");
@@ -26,6 +29,7 @@ const colorPalette = [
 // Load saved state on page load
 window.addEventListener('load', function() {
     loadFromLocalStorage();
+    loadHistoryFromStorage();
     updateNextWeightDisplay();
     updateUI(0, 0, 0);
 });
@@ -53,7 +57,35 @@ function addHistoryEntry(message) {
     entry.textContent = message;
     
     log.insertBefore(entry, log.firstChild);
+    historyEntries.unshift(message);
+    saveHistoryToStorage();
     console.log("History:", message);
+}
+
+function saveHistoryToStorage() {
+    localStorage.setItem('seesawHistory', JSON.stringify(historyEntries));
+}
+
+// Load History from Local Storage
+function loadHistoryFromStorage() {
+    const savedHistory = localStorage.getItem('seesawHistory');
+    if (savedHistory) {
+        try {
+            historyEntries = JSON.parse(savedHistory);
+            // Load history entries (newest to oldest)
+            historyEntries.forEach(entry => {
+                const log = document.getElementById('history');
+                const historyEntry = document.createElement('div');
+                historyEntry.classList.add('history-entry');
+                historyEntry.textContent = entry;
+                log.appendChild(historyEntry);
+            });
+            console.log("History loaded:", historyEntries.length + " entries");
+        } catch (error) {
+            console.error("History loading error:", error);
+            localStorage.removeItem('seesawHistory');
+        }
+    }
 }
 
 clickArea.addEventListener("click", (event) => {
@@ -250,9 +282,13 @@ function resetSeesaw() {
     nextWeight = generateNextWeight();
     updateNextWeightDisplay();
     localStorage.removeItem('seesawState');
+    localStorage.removeItem('seesawHistory');
     rotatePlank(0);
     updateUI(0, 0, 0);
     clearHistoryPanel();
+
+    historyEntries = [];
+
     console.log("Seesaw reset");
 }
 
